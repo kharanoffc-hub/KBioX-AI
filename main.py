@@ -1368,123 +1368,54 @@ def home():
 # ================================================================
 # 8. START SERVER SAFELY
 # ================================================================
-def kill_old_server():
-    try:
-        subprocess.run(
-            ["bash", "-lc", f"fuser -k {PORT}/tcp"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=3
+# IMPORTANT:
+# Render starts this module with `uvicorn main:app`.
+# Therefore, do NOT start a second Uvicorn server at import time.
+# The self-start block below runs only when `python main.py` is used
+# directly (e.g. Google Colab/local execution).
+
+def run_standalone_server():
+    kill_old_server()
+
+    def server_thread():
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=PORT,
+            log_level="warning"
         )
-    except Exception:
-        pass
 
-kill_old_server()
+    thread = threading.Thread(target=server_thread, daemon=True)
+    thread.start()
 
-def server_thread():
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=PORT,
-        log_level="warning"
-    )
-
-thread = threading.Thread(target=server_thread, daemon=True)
-thread.start()
-
-# Wait until server is ready
-ready = False
-for _ in range(40):
-    try:
-        with socket.create_connection(("127.0.0.1", PORT), timeout=.25):
-            ready = True
-            break
-    except Exception:
-        time.sleep(.25)
-
-if not ready:
-    raise RuntimeError("KBioX AI server did not start on port 8000.")
-
-# ================================================================
-# 9. COLAB IFRAME + OPTIONAL FREE PUBLIC LINK
-# ================================================================
-# Cloudflare Quick Tunnel is free and does not require an account.
-# It is temporary: the URL disappears when the Colab runtime ends.
-ENABLE_FREE_PUBLIC_LINK = True
-
-def start_free_public_link(port=PORT):
-    if not ENABLE_FREE_PUBLIC_LINK:
-        return None
-    try:
-        cloudflared = Path("/content/cloudflared")
-        if not cloudflared.exists():
-            import platform
-            arch = platform.machine().lower()
-            url = ("https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64"
-                   if ("aarch64" in arch or "arm64" in arch)
-                   else "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64")
-            print("Installing free Cloudflare Quick Tunnel...")
-            rr = requests.get(url, timeout=60)
-            rr.raise_for_status()
-            cloudflared.write_bytes(rr.content)
-            cloudflared.chmod(0o755)
-
-        log_file = Path("/content/cloudflared.log")
-        if log_file.exists():
-            log_file.unlink()
-        proc = subprocess.Popen(
-            [str(cloudflared), "tunnel", "--url", f"http://127.0.0.1:{port}", "--no-autoupdate", "--logfile", str(log_file)],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        globals()["_cloudflared_process"] = proc
-
-        public_url = None
-        deadline = time.time() + 35
-        pattern = re.compile(r"https://[a-zA-Z0-9.-]+\.trycloudflare\.com")
-        while time.time() < deadline:
-            if proc.poll() is not None:
+    ready = False
+    for _ in range(40):
+        try:
+            with socket.create_connection(("127.0.0.1", PORT), timeout=.25):
+                ready = True
                 break
-            try:
-                txt = log_file.read_text(errors="ignore") if log_file.exists() else ""
-                m = pattern.search(txt)
-                if m:
-                    public_url = m.group(0)
-                    break
-            except Exception:
-                pass
-            time.sleep(.5)
+        except Exception:
+            time.sleep(.25)
 
-        if public_url:
-            print("\n================ FREE PUBLIC LINK ================")
-            print(public_url)
-            print(f"Open in browser: {public_url}")
-            print("Temporary link — it expires when the Colab runtime ends.")
-            print("==================================================\n")
-            return public_url
+    if not ready:
+        raise RuntimeError(f"KBioX AI server did not start on port {PORT}.")
 
-        print("Cloudflare Quick Tunnel could not obtain a public URL.")
-        print("Check /content/cloudflared.log for tunnel details.")
-        print("The Colab embedded version will still work.")
-        return None
-    except Exception as e:
-        print(f"Free public link unavailable: {e}")
-        print("The Colab embedded version will still work.")
-        return None
+    try:
+        from google.colab import output
+        print("KBioX AI is running.")
+        print("Loaded models:",
+              {k: bool(unwrap_model(v)) for k,v in MODELS.items()})
 
-try:
-    from google.colab import output
-    print("KBioX AI is running.")
-    print("Loaded models:",
-          {k: bool(unwrap_model(v)) for k,v in MODELS.items()})
+        output.serve_kernel_port_as_iframe(
+            PORT,
+            width="100%",
+            height=1100
+        )
 
-    # Embedded private-to-your-Colab view
-    output.serve_kernel_port_as_iframe(
-        PORT,
-        width="100%",
-        height=1100
-    )
+        start_free_public_link(PORT)
+    except Exception:
+        print(f"Server running at http://127.0.0.1:{PORT}")
 
-    # Optional temporary free public URL
-    start_free_public_link(PORT)
-except Exception:
-    print(f"Server running at http://127.0.0.1:{PORT}")
+
+if __name__ == "__main__":
+    run_standalone_server()
