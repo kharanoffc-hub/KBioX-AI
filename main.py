@@ -1111,7 +1111,12 @@ body .text-4xl{font-size:38px!important}
 .metric>div:last-child{font-size:18px!important}
 @media(max-width:767px){
   body{font-size:17px!important}
-  .hero-title{font-size:2.25rem!important}
+  /* Mobile hero: keep the original compact mobile composition; desktop hero changes do not bleed into phones. */
+  .hero-grid{grid-template-columns:1fr!important;padding:1.25rem!important;gap:1rem!important}
+  .hero-title{font-size:2rem!important;line-height:1.08!important;letter-spacing:-.02em!important}
+  .hero-grid .text-sm{font-size:14px!important;line-height:1.6!important}
+  .hero-grid .text-base{font-size:15px!important;line-height:1.6!important}
+  .hero-grid .flex.flex-wrap.gap-3{margin-top:1rem!important;gap:.75rem!important}
   #summary,.ai-summary-points,.ai-summary-points li,#aiKeypoints,#aiKeypoints *{font-size:15px!important}
   .ai-text,.ai-text p,.ai-text li{font-size:16px!important}
 }
