@@ -60,7 +60,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Imag
 # ================================================================
 # 1. DIRECTORIES / CONFIG
 # ================================================================
-BASE_DIR = Path("/content/KB_MolecuLens_AI")
+BASE_DIR = Path(__file__).resolve().parent
 MODEL_DIR = BASE_DIR / "models"
 REPORT_DIR = BASE_DIR / "reports"
 TEMP_DIR = BASE_DIR / "temp"
@@ -74,7 +74,7 @@ for d in (MODEL_DIR, REPORT_DIR, TEMP_DIR):
 # without AI. The key remains only in this backend runtime.
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
 
-if not OPENROUTER_API_KEY:
+if not OPENROUTER_API_KEY and sys.stdin.isatty():
     print("\n================ KBioX AI CONFIGURATION ================")
     print("Your API key is optional.")
     print("Enter your OpenRouter key, or type SKIP and press Enter to continue.")
@@ -93,7 +93,7 @@ else:
 
 OPENROUTER_MODEL = "openai/gpt-4o-mini"
 
-PORT = 8000
+PORT = int(os.environ.get("PORT", "8000"))
 
 # ================================================================
 # 2. RDKit FEATURE ENGINE
@@ -190,17 +190,14 @@ def load_first_existing(paths):
     return None, None
 
 HIV_PACKAGE, HIV_PATH = load_first_existing([
-    "/content/HIV_RF_Model.pkl",
     str(MODEL_DIR / "HIV_RF_Model.pkl")
 ])
 
 TB_PACKAGE, TB_PATH = load_first_existing([
-    "/content/Tuberculosis.pkl",
     str(MODEL_DIR / "Tuberculosis.pkl")
 ])
 
 MALARIA_PACKAGE, MALARIA_PATH = load_first_existing([
-    "/content/Malaria_RF_Model.pkl",
     str(MODEL_DIR / "Malaria_RF_Model.pkl")
 ])
 

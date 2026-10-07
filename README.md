@@ -34,3 +34,6 @@ Note: Render Free web services can spin down after inactivity and have monthly u
 
 ## Model hosting
 The three trained model files are hosted in the public Hugging Face repository `kharanp/KBioX-AI-Models`. Render downloads them during the build into the local `models/` directory. GitHub does not need to contain the large `.pkl` files.
+
+
+Render fix: the app uses its writable project directory instead of /content, pins Python 3.13.5/scikit-learn 1.6.1 for the supplied models, and includes xgboost for the TB model bundle.
